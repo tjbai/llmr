@@ -15,6 +15,7 @@ def format_prompt(item):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config')
+    parser.add_argument('--output')
     return parser.parse_args()
 
 def main():
@@ -28,12 +29,13 @@ def main():
     pipe = pipeline('text-generation', config['model_name'], device=config['device'])
     generate_kwargs = {'num_return_sequences': config['M'], 'temperature': config['temperature'], 'do_sample': True}
 
-    with open(config['output'], 'w') as f:
+    with open(args.output, 'w') as f:
         for item in tqdm(dataset[config['split']]):
             messages = [{'role': 'user', 'content': format_prompt(item)}]
             gen = pipe(messages, max_new_tokens=config['max_new_tokens'], **generate_kwargs)
             resps = [x['generated_text'][-1]['content'] for x in gen]
             json.dump({'item': item, 'resps': resps}, f)
+            f.write('\n')
 
 if __name__ == '__main__':
     main()

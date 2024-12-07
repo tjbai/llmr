@@ -23,7 +23,7 @@ cat << EOF > "slurm/${job_name}.sh"
 
 ml anaconda
 conda activate llmr
-python3 $model_file --config=$config_path --device=cuda --wandb
+python3 $model_file --config=$config_path
 EOF
 
 echo "generated: ${job_name}.sh"

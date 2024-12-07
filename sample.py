@@ -1,5 +1,4 @@
 import json
-from operator import length_hint
 import yaml
 import argparse
 

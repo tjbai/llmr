@@ -68,11 +68,10 @@ def main():
     with open(config['output'], 'w') as f:
         ds = dataset[config['split']]
         total = len(ds) // config['B']
-        with open(config['output'], 'w') as f:
-            for batch in tqdm(load_batches(ds, config['B']), total=total):
-                for result in process(batch, pipe, tokenizer, pipe_kwargs):
-                    json.dump(result, f)
-                    f.write('\n')
+        for batch in tqdm(load_batches(ds, config['B']), total=total):
+            for result in process(batch, pipe, tokenizer, pipe_kwargs):
+                json.dump(result, f)
+                f.write('\n')
 
 if __name__ == '__main__':
     main()

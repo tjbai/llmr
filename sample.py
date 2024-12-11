@@ -29,7 +29,7 @@ def main():
     args = parse_args()
 
     with open(args.config, 'r') as f:
-        config = yaml.safe_load(args.config)
+        config = yaml.safe_load(f)
         config['device'] = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     dataset = load_dataset('google-research-datasets/mbpp')
@@ -42,15 +42,16 @@ def main():
         'num_return_sequences': config['M'],
         'temperature': config['temperature'],
         'do_sample': True,
+        'pad_token_id': tokenizer.eos_token_id
     }
 
-    with open(args.output, 'w') as f:
+    with open(config['output'], 'w') as f:
         for item in tqdm(dataset[config['split']]):
             messages = [{'role': 'user', 'content': format_prompt(item)}]
             gen = pipe(messages, **pipe_kwargs)
             tok_ids = [x['generated_token_ids'] for x in gen]
             resps = [parse_response(resp, tokenizer) for resp in tok_ids]
-            json.dump({'item': item, 'resps': resps, 'num_toks': map(len, tok_ids)}, f)
+            json.dump({'item': item, 'resps': resps, 'num_toks': list(map(len, tok_ids))}, f)
             f.write('\n')
 
 if __name__ == '__main__':

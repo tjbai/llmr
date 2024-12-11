@@ -23,7 +23,12 @@ generate_kwargs = {'num_return_sequences': 1, 'do_sample': True, 'temperature': 
 resp = pipe(messages, max_new_tokens=10, return_tensors=True, **generate_kwargs)
 
 # %%
-code = resp[0]['generated_text'][-1]['content']
+from transformers import AutoTokenizer
+tokenizer = AutoTokenizer.from_pretrained('meta-llama/Llama-3.2-1B-Instruct')
+
+# %%
+x = tokenizer.decode(resp[0]['generated_token_ids'])
+x[x.rfind('<|end_header_id|>')+len('<|end_header_id|>'):]
 
 # %%
 print(dataset['train'][0]['text'])

@@ -19,9 +19,10 @@ def parse_response(tok_ids, tokenizer, last='<|end_header_id|>'):
     ind = resp.rindex(last)
     return resp[ind+len(last):]
 
+# hacky
 def load_batches(items, B):
     for i in range(0, len(items), B):
-        yield items[i:i + B]
+        yield [dict(items[j]) for j in range(i, min(i + B, len(items)))]
 
 def process(batch, pipe, tokenizer, pipe_kwargs):
     messages = [{'role': 'user', 'content': format_prompt(item)} for item in batch]
@@ -42,7 +43,6 @@ def process(batch, pipe, tokenizer, pipe_kwargs):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config')
-    parser.add_argument('--output')
     return parser.parse_args()
 
 def main():

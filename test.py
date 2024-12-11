@@ -6,6 +6,11 @@
 from datasets import load_dataset
 dataset = load_dataset('google-research-datasets/mbpp')
 
+def load_batches(items, B):
+    for i in range(0, len(items), B):
+        batch = [dict(items[j]) for j in range(i, min(i + B, len(items)))]
+        yield batch
+
 # %%
 import torch
 from transformers import pipeline

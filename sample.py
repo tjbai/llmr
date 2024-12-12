@@ -5,7 +5,7 @@ import argparse
 import torch
 from tqdm import tqdm
 from datasets import load_dataset
-from transformers import AutoTokenizer, pipeline
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
 INSTRUCTIONS = 'Your code should satisfy the following tests. Aim for a concise and clean solution. Only return code.'
 
@@ -51,10 +51,14 @@ def main():
     with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
         config['device'] = 'cuda' if torch.cuda.is_available() else 'cpu'
-
+        
     dataset = load_dataset('google-research-datasets/mbpp')
-    pipe = pipeline('text-generation', config['model_name'], device=config['device'], model_kwargs={'torch_dtype': torch.bfloat16})
-    tokenizer = AutoTokenizer.from_pretrained(config['model_name'])
+    print('loaded dataset')
+
+    model = AutoModelForCausalLM.from_pretrained(config['model'], torch_dtype=torch.bfloat16)
+    tokenizer = AutoTokenizer.from_pretrained(config['model'])
+    pipe = pipeline('text-generation', model=model, tokenizer=tokenizer, device=config['device'])
+    print('loaded pipeline')
 
     pipe_kwargs = {
         'max_new_tokens': config['max_new_tokens'],
@@ -63,8 +67,7 @@ def main():
         'temperature': config['temperature'],
         'do_sample': True,
         'pad_token_id': tokenizer.eos_token_id,
-        'eos_token_id': 128009,
-        'early_stopping': True
+        'eos_token_id': 128009
     }
 
     with open(config['output'], 'w') as f:

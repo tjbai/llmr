@@ -63,7 +63,7 @@ def main():
         'temperature': config['temperature'],
         'do_sample': True,
         'pad_token_id': tokenizer.eos_token_id,
-        'eos_token_id': '<|eot_id|>',
+        'eos_token_id': 128009,
         'early_stopping': True
     }
 

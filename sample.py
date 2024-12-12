@@ -25,7 +25,7 @@ def load_batches(items, B):
         yield [dict(items[j]) for j in range(i, min(i + B, len(items)))]
 
 def process(batch, pipe, tokenizer, pipe_kwargs):
-    messages = [{'role': 'user', 'content': format_prompt(item)} for item in batch]
+    messages = [[{'role': 'user', 'content': format_prompt(item)}] for item in batch]
     gens = pipe(messages, **pipe_kwargs)
 
     results = []
@@ -53,10 +53,7 @@ def main():
         config['device'] = 'cuda' if torch.cuda.is_available() else 'cpu'
         
     dataset = load_dataset('google-research-datasets/mbpp')
-    print('loaded dataset')
-
-    # model = AutoModelForCausalLM.from_pretrained(config['model'], torch_dtype=torch.bfloat16)
-    # tokenizer = AutoTokenizer.from_pretrained(config['model'])
+    tokenizer = AutoTokenizer.from_pretrained(config['model'])
     pipe = pipeline('text-generation', model=config['model'], device=config['device'])
     print('loaded pipeline')
 

@@ -7,7 +7,7 @@ from tqdm import tqdm
 from datasets import load_dataset
 from transformers import AutoTokenizer, pipeline
 
-INSTRUCTIONS = 'Your code should satisfy the following tests. Aim for a concise and clean solution.'
+INSTRUCTIONS = 'Your code should satisfy the following tests. Aim for a concise and clean solution. Only return code.'
 
 def format_prompt(item):
     show_tests = lambda x: '\n'.join(x)
@@ -53,7 +53,7 @@ def main():
         config['device'] = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     dataset = load_dataset('google-research-datasets/mbpp')
-    pipe = pipeline('text-generation', config['model_name'], device=config['device'])
+    pipe = pipeline('text-generation', config['model_name'], device=config['device'], model_kwargs={'torch_dtype': torch.bfloat16})
     tokenizer = AutoTokenizer.from_pretrained(config['model_name'])
 
     pipe_kwargs = {
@@ -62,7 +62,9 @@ def main():
         'num_return_sequences': config['M'],
         'temperature': config['temperature'],
         'do_sample': True,
-        'pad_token_id': tokenizer.eos_token_id
+        'pad_token_id': tokenizer.eos_token_id,
+        'eos_token_id': '<|eot_id|>',
+        'early_stopping': True
     }
 
     with open(config['output'], 'w') as f:

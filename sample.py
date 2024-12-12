@@ -15,9 +15,9 @@ def format_prompt(item):
         else f"{item['text']} {INSTRUCTIONS}\n\n{show_tests(item['test_list'])}"
 
 def parse_response(tok_ids, tokenizer, last='<|end_header_id|>'):
-    resp = tokenizer.decode(tok_ids)
-    ind = resp.rindex(last)
-    return resp[ind+len(last):]
+    return tokenizer.decode(tok_ids)
+    # ind = resp.rindex(last)
+    # return resp[ind+len(last):]
 
 # hacky
 def load_batches(items, B):

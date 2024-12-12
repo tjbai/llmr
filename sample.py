@@ -55,9 +55,9 @@ def main():
     dataset = load_dataset('google-research-datasets/mbpp')
     print('loaded dataset')
 
-    model = AutoModelForCausalLM.from_pretrained(config['model'], torch_dtype=torch.bfloat16)
-    tokenizer = AutoTokenizer.from_pretrained(config['model'])
-    pipe = pipeline('text-generation', model=model, tokenizer=tokenizer, device=config['device'])
+    # model = AutoModelForCausalLM.from_pretrained(config['model'], torch_dtype=torch.bfloat16)
+    # tokenizer = AutoTokenizer.from_pretrained(config['model'])
+    pipe = pipeline('text-generation', model=config['model'], device=config['device'])
     print('loaded pipeline')
 
     pipe_kwargs = {

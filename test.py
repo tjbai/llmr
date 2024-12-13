@@ -12,6 +12,33 @@ def load_batches(items, B):
         yield batch
 
 # %%
+from transformers import AutoTokenizer
+tokenizer = AutoTokenizer.from_pretrained('meta-llama/Llama-3.2-1B-Instruct')
+
+def format_prompt(item):
+    show_tests = lambda x: '\n'.join(x)
+    return f"{item['text']} Write code that passes the following tests.\n\n{item['test_setup_code']}\n\n{show_tests(item['test_list'])}" if item['test_setup_code']\
+        else f"{item['text']} Write code that passes the following tests.\n\n{show_tests(item['test_list'])}"
+
+def process(batch, pipe, tokenizer, pipe_kwargs):
+    messages = [[{'role': 'user', 'content': format_prompt(item)}] for item in batch]
+    return pipe(messages, **pipe_kwargs)
+
+pipe_kwargs = {
+    'max_new_tokens': 1,
+    'return_tensors': True,
+    'num_return_sequences': 2,
+    'temperature': 0.7,
+    'do_sample': True,
+    'pad_token_id': tokenizer.eos_token_id,
+    'eos_token_id': 128009
+}
+
+for batch in load_batches(dataset['train'], 2):
+    res = process(batch, pipe, tokenizer, pipe_kwargs)
+    break
+
+# %%
 import torch
 from transformers import pipeline
 pipe = pipeline('text-generation', 'meta-llama/Llama-3.2-1B-Instruct', torch_dtype=torch.float16)

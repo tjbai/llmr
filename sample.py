@@ -30,11 +30,7 @@ def process(batch, pipe, tokenizer, pipe_kwargs):
 
     results = []
     for i, item in enumerate(batch):
-        s = i * pipe_kwargs['num_return_sequences']
-        e = s + pipe_kwargs['num_return_sequences']
-        item_gens = gens[s:e]
-
-        tok_ids = [x['generated_token_ids'] for x in item_gens]
+        tok_ids = [x['generated_token_ids'] for x in gens[i]]
         resps = [parse_response(resp, tokenizer) for resp in tok_ids]
         results.append({'item': item, 'resps': resps, 'num_toks': list(map(len, tok_ids))})
 

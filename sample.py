@@ -5,7 +5,7 @@ import argparse
 import torch
 from tqdm import tqdm
 from datasets import load_dataset
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from transformers import AutoTokenizer, pipeline
 
 INSTRUCTIONS = 'Your code should satisfy the following tests. Aim for a concise and clean solution. Only return code.'
 
@@ -14,10 +14,8 @@ def format_prompt(item):
     return f"{item['text']} {INSTRUCTIONS}\n\n{item['test_setup_code']}\n\n{show_tests(item['test_list'])}" if item['test_setup_code']\
         else f"{item['text']} {INSTRUCTIONS}\n\n{show_tests(item['test_list'])}"
 
-def parse_response(tok_ids, tokenizer, last='<|end_header_id|>'):
+def parse_response(tok_ids, tokenizer, _='<|end_header_id|>'):
     return tokenizer.decode(tok_ids)
-    # ind = resp.rindex(last)
-    # return resp[ind+len(last):]
 
 # hacky
 def load_batches(items, B):
@@ -25,8 +23,10 @@ def load_batches(items, B):
         yield [dict(items[j]) for j in range(i, min(i + B, len(items)))]
 
 def process(batch, pipe, tokenizer, pipe_kwargs):
-    messages = [[{'role': 'user', 'content': format_prompt(item)}] for item in batch]
-    gens = pipe(messages, **pipe_kwargs)
+    # also hacky but prefills assistant for consistent formatting
+    msgs = [[{'role': 'user', 'content': format_prompt(item)}, {'role': 'assistant', 'content': '```python'}] for item in batch]    
+    tokenized_msgs = [tokenizer.decode(tokenizer.apply_chat_template(m)[-1]) for m in msgs]
+    gens = pipe(tokenized_msgs, **pipe_kwargs)
 
     results = []
     for i, item in enumerate(batch):
@@ -50,7 +50,8 @@ def main():
         
     dataset = load_dataset('google-research-datasets/mbpp')
     tokenizer = AutoTokenizer.from_pretrained(config['model'])
-    pipe = pipeline('text-generation', model=config['model'], device=config['device'])
+    model_kwargs = {'torch_dtype': torch.bfloat16, 'device_map': 'auto'}
+    pipe = pipeline('text-generation', model=config['model'], device=config['device'], model_kwargs=model_kwargs)
     print('loaded pipeline')
 
     pipe_kwargs = {

@@ -10,8 +10,8 @@ from transformers import AutoTokenizer, pipeline
 from huggingface_hub import InferenceClient
 
 # load hf api key
-from dotenv import load_dotenv
-load_dotenv()
+import dotenv
+dotenv.load_dotenv()
 
 INSTRUCTIONS = 'Your code should satisfy the following tests. Aim for a concise and clean solution. Only return code.'
 
@@ -36,7 +36,8 @@ def process_local(batch, pipe, tokenizer, config):
         'temperature': config['temperature'],
         'do_sample': True,
         'pad_token_id': tokenizer.eos_token_id,
-        'eos_token_id': 128009
+        'eos_token_id': 128009,
+        'return_full_text': False
     }
 
     msgs = [[{'role': 'user', 'content': format_prompt(item)}, {'role': 'assistant', 'content': '```python'}] for item in batch]    
@@ -47,17 +48,17 @@ def process_local(batch, pipe, tokenizer, config):
     for i, item in enumerate(batch):
         tok_ids = [x['generated_token_ids'] for x in gens[i]]
         resps = [parse_response(resp, tokenizer) for resp in tok_ids]
-        results.append({'item': item, 'resps': resps, 'num_toks': list(map(len, tok_ids))})
+        num_toks = [len(tok_ids) for tok_ids in tok_ids]
+        results.append({'item': item, 'text': resps, 'num_tokens': num_toks})
 
     return results
 
-# slow and i had pay 9 bucks but whatever
 def process_hf(batch, client, tokenizer, config):
     gen_kwargs = {
         'max_new_tokens': config['max_new_tokens'],
         'temperature': config['temperature'],
         'do_sample': True,
-        'return_full_text': True,
+        'return_full_text': False,
         'details': True
     }
 
@@ -73,7 +74,7 @@ def process_hf(batch, client, tokenizer, config):
             resps.append(output.generated_text)
             num_toks.append(output.details.generated_tokens)
             
-        results.append({'item': item, 'resps': resps, 'num_toks': num_toks})
+        results.append({'item': item, 'text': resps, 'num_tokens': num_toks})
     
     return results
 

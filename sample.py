@@ -51,7 +51,7 @@ def main():
     dataset = load_dataset('google-research-datasets/mbpp')
     tokenizer = AutoTokenizer.from_pretrained(config['model'])
     model_kwargs = {'torch_dtype': torch.bfloat16}
-    pipe = pipeline('text-generation', model=config['model'], model_kwargs=model_kwargs, device=config['device'])#, device_map='auto')
+    pipe = pipeline('text-generation', model=config['model'], model_kwargs=model_kwargs, device=config['device'])
 
     # model_device = next(pipe.model.parameters()).device
     # print(f'model is running on: {model_device}')

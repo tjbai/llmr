@@ -31,7 +31,6 @@ def load_batches(items, B):
 def process_local(batch, pipe, tokenizer, config):
     pipe_kwargs = {
         'max_new_tokens': config['max_new_tokens'],
-        'return_tensors': True,
         'num_return_sequences': config['M'],
         'temperature': config['temperature'],
         'do_sample': True,
@@ -48,7 +47,7 @@ def process_local(batch, pipe, tokenizer, config):
     for i, item in enumerate(batch):
         tok_ids = [x['generated_token_ids'] for x in gens[i]]
         resps = [parse_response(resp, tokenizer) for resp in tok_ids]
-        num_toks = [len(tok_ids) for tok_ids in tok_ids]
+        num_toks = [len(tokenizer.encode(resp)) for resp in tok_ids]
         results.append({'item': item, 'text': resps, 'num_tokens': num_toks})
 
     return results

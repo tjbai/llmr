@@ -4,6 +4,6 @@ output: outputs/1b.jsonl
 split: train
 B: 16
 
-M: 1
+M: 10
 temperature: 0.7
 max_new_tokens: 512

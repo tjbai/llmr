@@ -35,19 +35,17 @@ def process_local(batch, pipe, tokenizer, config):
         'temperature': config['temperature'],
         'do_sample': True,
         'pad_token_id': tokenizer.eos_token_id,
-        'eos_token_id': 128009,
         'return_full_text': False
     }
 
-    msgs = [[{'role': 'user', 'content': format_prompt(item)}, {'role': 'assistant', 'content': '```python'}] for item in batch]    
-    tokenized_msgs = [tokenizer.decode(tokenizer.apply_chat_template(m)[-1]) for m in msgs]
+    msgs = [[{'role': 'user', 'content': format_prompt(item)}, {'role': 'assistant', 'content': '```python'}] for item in batch]
+    tokenized_msgs = [tokenizer.decode(tokenizer.apply_chat_template(m)[:-1]) for m in msgs]
     gens = pipe(tokenized_msgs, **pipe_kwargs)
 
     results = []
     for i, item in enumerate(batch):
-        tok_ids = [x['generated_token_ids'] for x in gens[i]]
-        resps = [parse_response(resp, tokenizer) for resp in tok_ids]
-        num_toks = [len(tokenizer.encode(resp)) for resp in tok_ids]
+        resps = [x['generated_text'] for x in gens[i]]
+        num_toks = [len(tokenizer.encode(resp)) for resp in resps]
         results.append({'item': item, 'text': resps, 'num_tokens': num_toks})
 
     return results

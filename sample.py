@@ -1,3 +1,4 @@
+import os
 import json
 import yaml
 import argparse
@@ -7,6 +8,10 @@ from tqdm import tqdm
 from datasets import load_dataset
 from transformers import AutoTokenizer, pipeline
 from huggingface_hub import InferenceClient
+
+# load hf api key
+from dotenv import load_dotenv
+load_dotenv()
 
 INSTRUCTIONS = 'Your code should satisfy the following tests. Aim for a concise and clean solution. Only return code.'
 
@@ -34,7 +39,6 @@ def process_local(batch, pipe, tokenizer, config):
         'eos_token_id': 128009
     }
 
-    # also hacky but prefills assistant for consistent formatting
     msgs = [[{'role': 'user', 'content': format_prompt(item)}, {'role': 'assistant', 'content': '```python'}] for item in batch]    
     tokenized_msgs = [tokenizer.decode(tokenizer.apply_chat_template(m)[-1]) for m in msgs]
     gens = pipe(tokenized_msgs, **pipe_kwargs)
@@ -47,23 +51,30 @@ def process_local(batch, pipe, tokenizer, config):
 
     return results
 
+# slow and i had pay 9 bucks but whatever
 def process_hf(batch, client, tokenizer, config):
     gen_kwargs = {
         'max_new_tokens': config['max_new_tokens'],
         'temperature': config['temperature'],
-        'n': config['M'],
-        'do_sample': True
+        'do_sample': True,
+        'return_full_text': True,
+        'details': True
     }
 
     results = []
     for item in batch:
         msgs = [{'role': 'user', 'content': format_prompt(item)}, {'role': 'assistant', 'content': '```python'}]
-        tokenized_msg = [tokenizer.decode(tokenizer.apply_chat_template(m)[:-1]) for m in msgs]
-        completions = client.text_generation(tokenized_msg, **gen_kwargs)
-        if isinstance(completions, list): resps = completions
-        else: resps = [completions]
-        results.append({'item': item, 'resps': resps, 'num_toks': [len(resp.split()) for resp in resps]})
-
+        tokenized_msg = tokenizer.decode(tokenizer.apply_chat_template(msgs)[:-1])
+        
+        resps = []
+        num_toks = []
+        for _ in range(config['M']):
+            output = client.text_generation(tokenized_msg, **gen_kwargs)
+            resps.append(output.generated_text)
+            num_toks.append(output.details.generated_tokens)
+            
+        results.append({'item': item, 'resps': resps, 'num_toks': num_toks})
+    
     return results
 
 def parse_args():
@@ -82,7 +93,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(config['model'])
     
     if config.get('use_hf', False):
-        client = InferenceClient(api_key=config['hf_api_key'])
+        client = InferenceClient(api_key=os.environ.get('HF_API_KEY'))
         process_fn = lambda batch: process_hf(batch, client, tokenizer, config)
     else:
         model_kwargs = {'torch_dtype': torch.bfloat16}
@@ -96,9 +107,6 @@ def main():
             for result in process_fn(batch):
                 json.dump(result, f)
                 f.write('\n')
-            
-            print('early exiting for test purposes')
-            break
 
 if __name__ == '__main__':
     main()

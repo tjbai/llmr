@@ -1,9 +1,10 @@
-model: /scratch4/jeisner1/llama_70b
+model: meta-llama/Llama-3.3-70B-Instruct
+use_hf: true
 
 output: outputs/70b.jsonl
 split: train
-B: 4
+B: 1
 
-M: 1
+M: 10
 temperature: 0.7
 max_new_tokens: 512

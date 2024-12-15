@@ -6,6 +6,8 @@ from tqdm import tqdm
 import wandb
 import torch
 import torch.nn.functional as F
+import numpy as np
+
 from torch import nn
 from torch.optim import AdamW
 from transformers import DebertaV2Model, DebertaV2TokenizerFast
@@ -83,17 +85,44 @@ def get_loaders(config):
     
     return train_loader, val_loader
 
+def compute_ece(preds, targets, n_bins=10):
+    ece = 0
+    bin_boundaries = np.linspace(0, 1, n_bins + 1)
+    for i in range(n_bins):
+        bin_mask = (preds >= bin_boundaries[i]) & (preds < bin_boundaries[i+1])
+        if not any(bin_mask): continue
+        bin_conf = preds[bin_mask].mean()
+        bin_acc = targets[bin_mask].mean()
+        ece += (sum(bin_mask) / len(preds)) * abs(bin_acc - bin_conf)
+    return ece
+
 @torch.no_grad()
 def val(model, val_loader, config, max_steps=None):
     model.eval()
-    tot = N = 0
+    tot_loss = N = 0
+    all_preds = []
+    all_targets = []
+    
     for i, batch in enumerate(val_loader):
         if max_steps and i >= max_steps: break
         batch = {k: v.to(config['device']) for k, v in batch.items()}
-        loss = model.step(batch)
-        tot += loss
+        logits = model(batch['input_ids'], batch['attention_mask'])
+        loss = F.binary_cross_entropy_with_logits(logits, batch['target'])
+        
+        preds = torch.sigmoid(logits)
+        all_preds.extend(preds.cpu().numpy())
+        all_targets.extend(batch['target'].cpu().numpy())
+        
+        tot_loss += loss.item()
         N += 1
-    return tot / N
+
+    # get calibration scores too
+    all_preds = np.array(all_preds)
+    all_targets = np.array(all_targets)
+    ece = compute_ece(all_preds, all_targets)
+    brier = np.mean((all_preds - all_targets) ** 2)
+    
+    wandb.log({'val/loss': tot_loss / N, 'val/ece': ece, 'val/brier': brier})
 
 def train(config):
     device = config['device']
@@ -118,7 +147,7 @@ def train(config):
 
             wandb.log({'train/loss': loss})
         
-        wandb.log({'val/loss': val(model, val_loader, config)})
+        val(model, val_loader, config)
         torch.save({
             'model': model.head.state_dict(), 'optim': optim.state_dict()},
             f"{config['checkpoint']}/{config['model']['name'].split('/')[1]}_epoch={epoch+1}.pt"

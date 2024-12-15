@@ -1,45 +1,60 @@
 import json
 import yaml
 import argparse
+import random
 from tqdm import tqdm
 
 import wandb
 import torch
 import torch.nn.functional as F
 import numpy as np
+import nlpaug.augmenter.word as naw
+import nlpaug.augmenter.sentence as nas
 
 from torch import nn
 from torch.optim import AdamW
 from transformers import DebertaV2Model, DebertaV2TokenizerFast
 from torch.utils.data import Dataset, DataLoader, random_split
+from nlpaug.flow import Sometimes
 
 class RouterDataset(Dataset):
-    def __init__(self, input, t=0):
-        self.t = t
+    def __init__(self, input, augment=False, aug_factor=3):
         self.tokenizer = DebertaV2TokenizerFast.from_pretrained('microsoft/deberta-v3-small')
-
-        self.items = []
+        self.augmenters = {naw.SynonymAug(), naw.ContextualWordEmbsAug(), naw.BackTranslationAug(max_length=512)}
+    
         with open(input, 'r') as f:
-            for line in f:
-                o = json.loads(line) # {'prompt': ..., 'target': ...}
-                inputs = self.tokenizer(
-                    o['prompt'],
-                    padding='max_length',
-                    max_length=512,
-                    truncation=True,
-                    return_tensors='pt'
-                )
-                self.items.append({
-                    'input_ids': inputs['input_ids'].squeeze(),
-                    'attention_mask': inputs['attention_mask'].squeeze(),
-                    'target': o['target']
-                })
+            self.items = [json.loads(line) for line in f]
+        
+        if augment:
+            aug_items = []
+            print(f'generating items with aug_factor={aug_factor}')
+            for item in tqdm(self.items):
+                for _ in range(aug_factor):
+                    aug = random.choice(self.augmenters)
+                    new_prompt = aug.augment(item['prompt'])[0]
+                    aug_items.append({'prompt': new_prompt, 'target': item['target']})
+            self.items.extend(aug_items)
+        
+        self.tokenized_items = [] 
+        for item in self.items:
+            inputs = self.tokenizer(
+                item['prompt'],
+                padding='max_length',
+                truncation=True,
+                max_length=512,
+                return_tensors='pt'
+            )
+            self.tokenized_items.append({
+                'input_ids': inputs['input_ids'].squeeze(),
+                'attention_mask': inputs['attention_mask'].squeeze(),
+                'target': item['target'],
+            })
 
     def __getitem__(self, idx):
-        return self.items[idx]
+        return self.tokenized_items[idx]
     
     def __len__(self):
-        return len(self.items)
+        return len(self.tokenized_items)
 
 class Router(nn.Module):
     def __init__(self, dropout=0.25, hidden_size=384):
@@ -48,20 +63,10 @@ class Router(nn.Module):
         self.bert.requires_grad_(False)
         self.head = nn.Sequential(
             nn.Linear(768, hidden_size),
-            nn.LayerNorm(hidden_size),
             nn.Dropout(dropout),
-            nn.GELU(),
-            nn.Linear(hidden_size, hidden_size // 2),
-            nn.Dropout(dropout),
-            nn.GELU(),
-            nn.Linear(hidden_size // 2, 1)
+            nn.Tanh(),
+            nn.Linear(hidden_size, 1)
         )
-        # self.head = nn.Sequential(
-        #     nn.Linear(768, hidden_size),
-        #     nn.Dropout(dropout),
-        #     nn.Tanh(),
-        #     nn.Linear(hidden_size, 1)
-        # )
 
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask, return_dict=True)
@@ -74,11 +79,17 @@ class Router(nn.Module):
         return F.binary_cross_entropy_with_logits(logits, batch['target'])
     
 def get_loaders(config):
-    dataset = RouterDataset(config['data']['input'])
+    dataset = RouterDataset(
+        config['data']['input'],
+        augment=config['data'].get('augment', False),
+        aug_factor=config['data'].get('aug_factor', 3)
+    )
+
     train_dataset, val_dataset = random_split(
         dataset,
         [len(dataset) - config['data']['val_size'], config['data']['val_size']],
-        generator=torch.Generator().manual_seed(42))
+        generator=torch.Generator().manual_seed(42)
+    )
 
     train_loader = DataLoader(train_dataset, batch_size=config['training']['batch_size'], shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=config['training']['batch_size'], shuffle=False)

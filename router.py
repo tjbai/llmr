@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torch.optim import AdamW
-from transformers import DebertaModel, DebertaV2TokenizerFast
+from transformers import DebertaV2Model, DebertaV2TokenizerFast
 from torch.utils.data import Dataset, DataLoader, random_split
 
 class RouterDataset(Dataset):
@@ -41,7 +41,8 @@ class RouterDataset(Dataset):
 
 class Router(nn.Module):
     def __init__(self, dropout=0.25, hidden_size=384):
-        self.bert = DebertaModel.from_pretrained('microsoft/deberta-v3-small')
+        super().__init__()
+        self.bert = DebertaV2Model.from_pretrained('microsoft/deberta-v3-small')
         self.bert.requires_grad_(False)
         self.head = nn.Sequential(
             nn.Linear(768, hidden_size),
@@ -58,27 +59,26 @@ class Router(nn.Module):
     
     def step(self, batch):
         logits = self.forward(batch['input_ids'], batch['attention_mask'])
-        return F.binary_cross_entropy_with_logits(logits, batch['targets'])
+        return F.binary_cross_entropy_with_logits(logits, batch['target'])
     
 def get_loaders(config):
     dataset = RouterDataset(config['data']['input'])
-    _train_dataset, _val_dataset = random_split(
+    train_dataset, val_dataset = random_split(
         dataset,
-        [len(dataset) - config['data']['val_size'], config['val_size']],
+        [len(dataset) - config['data']['val_size'], config['data']['val_size']],
         generator=torch.Generator().manual_seed(42))
 
-    train_dataset = RouterDataset(_train_dataset)
     train_loader = DataLoader(train_dataset, batch_size=config['training']['batch_size'], shuffle=True)
-    val_dataset = RouterDataset(_val_dataset)
     val_loader = DataLoader(val_dataset, batch_size=config['training']['batch_size'], shuffle=False)
     
     return train_loader, val_loader
 
 @torch.no_grad()
-def val(model, val_loader, config):
+def val(model, val_loader, config, max_steps=None):
     model.eval()
     tot = N = 0
-    for batch in val_loader:
+    for i, batch in enumerate(val_loader):
+        if max_steps and i >= max_steps: break
         batch = {k: v.to(config['device']) for k, v in batch.items()}
         loss = model.step(batch)
         tot += loss
@@ -90,6 +90,10 @@ def train(config):
     train_loader, val_loader = get_loaders(config)
     model = Router(dropout=config['model']['dropout'], hidden_size=config['model']['hidden_size']).to(device)
     optim = AdamW(model.parameters(), lr=config['training']['lr'])
+    
+    print('sanity check loading...')
+    val(model, val_loader, config, 1)
+    print('passed!')
     
     for epoch in range(config['training']['epochs']):
         model.train()
@@ -119,7 +123,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    with open(args.config) as f: config = yaml.safe_load(args)
+    with open(args.config) as f: config = yaml.safe_load(f)
     config['device'] = 'cuda' if torch.cuda.is_available() else 'cpu'
     wandb.init(project='llmr', name=config['wandb']['run_name'], config=config)
     train(config)

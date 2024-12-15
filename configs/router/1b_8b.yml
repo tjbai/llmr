@@ -13,7 +13,7 @@ data:
 training:
   batch_size: 32
   epochs: 5
-  lr: 1e-5
+  lr: 0.0001
   clip_grad_norm: 1.0
 
 checkpoint: "checkpoints"

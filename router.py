@@ -46,10 +46,20 @@ class Router(nn.Module):
         self.bert.requires_grad_(False)
         self.head = nn.Sequential(
             nn.Linear(768, hidden_size),
+            nn.LayerNorm(hidden_size),
             nn.Dropout(dropout),
-            nn.Tanh(),
-            nn.Linear(hidden_size, 1)
+            nn.GELU(),
+            nn.Linear(hidden_size, hidden_size // 2),
+            nn.Dropout(dropout),
+            nn.GELU(),
+            nn.Linear(hidden_size // 2, 1)
         )
+        # self.head = nn.Sequential(
+        #     nn.Linear(768, hidden_size),
+        #     nn.Dropout(dropout),
+        #     nn.Tanh(),
+        #     nn.Linear(hidden_size, 1)
+        # )
 
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask, return_dict=True)
@@ -101,9 +111,9 @@ def train(config):
             batch = {k: v.to(device) for k, v in batch.items()}
             loss = model.step(batch)
 
+            optim.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config['training']['clip_grad_norm'])
-            optim.zero_grad()
             optim.step()
 
             wandb.log({'train/loss': loss})
@@ -111,7 +121,7 @@ def train(config):
         wandb.log({'val/loss': val(model, val_loader, config)})
         torch.save({
             'model': model.head.state_dict(), 'optim': optim.state_dict()},
-            f"{config['checkpoint']}/{config['model']['name']}_epoch={epoch+1}.pt"
+            f"{config['checkpoint']}/{config['model']['name'].split('/')[1]}_epoch={epoch+1}.pt"
         )
     
     wandb.finish()

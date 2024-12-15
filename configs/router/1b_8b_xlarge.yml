@@ -1,10 +1,10 @@
 wandb:
-  run_name: "1b_8b_t=0"
+  run_name: "1b_8b_base_t=0"
 
 model:
-  name: "deberta-small"
+  name: "microsoft/deberta-v2-xlarge"
   dropout: 0.1
-  hidden_size: 384
+  hidden_size: 768
 
 data:
   input: "outputs/1b_8b_wins.jsonl"

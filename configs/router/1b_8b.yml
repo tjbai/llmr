@@ -1,5 +1,5 @@
 wandb:
-  run_name: "1b_8b_v1"
+  run_name: "1b_8b_t=0"
 
 model:
   name: "deberta-small"
@@ -7,7 +7,8 @@ model:
   hidden_size: 384
 
 data:
-  train: "outputs/1b_8b_wins.jsonl"
+  input: "outputs/1b_8b_wins.jsonl"
+  val_size: 50
 
 training:
   batch_size: 32

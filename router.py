@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.optim import AdamW
 from transformers import DebertaModel, DebertaV2TokenizerFast
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 
 class RouterDataset(Dataset):
     def __init__(self, input, t=0):
@@ -60,12 +60,35 @@ class Router(nn.Module):
         logits = self.forward(batch['input_ids'], batch['attention_mask'])
         return F.binary_cross_entropy_with_logits(logits, batch['targets'])
     
+def get_loaders(config):
+    dataset = RouterDataset(config['data']['input'])
+    _train_dataset, _val_dataset = random_split(
+        dataset,
+        [len(dataset) - config['data']['val_size'], config['val_size']],
+        generator=torch.Generator().manual_seed(42))
+
+    train_dataset = RouterDataset(_train_dataset)
+    train_loader = DataLoader(train_dataset, batch_size=config['training']['batch_size'], shuffle=True)
+    val_dataset = RouterDataset(_val_dataset)
+    val_loader = DataLoader(val_dataset, batch_size=config['training']['batch_size'], shuffle=False)
+    
+    return train_loader, val_loader
+
+@torch.no_grad()
+def val(model, val_loader, config):
+    model.eval()
+    tot = N = 0
+    for batch in val_loader:
+        batch = {k: v.to(config['device']) for k, v in batch.items()}
+        loss = model.step(batch)
+        tot += loss
+        N += 1
+    return tot / N
+
 def train(config):
     device = config['device']
-
+    train_loader, val_loader = get_loaders(config)
     model = Router(dropout=config['model']['dropout'], hidden_size=config['model']['hidden_size']).to(device)
-    train_dataset = RouterDataset(config['data']['train'])
-    train_loader = DataLoader(train_dataset, batch_size=config['training']['batch_size'], shuffle=True)
     optim = AdamW(model.parameters(), lr=config['training']['lr'])
     
     for epoch in range(config['training']['epochs']):
@@ -81,8 +104,9 @@ def train(config):
 
             wandb.log({'train/loss': loss})
         
-        torch.save(
-            {'model': model.head.state_dict(), 'optim': optim.state_dict()},
+        wandb.log({'val/loss': val(model, val_loader, config)})
+        torch.save({
+            'model': model.head.state_dict(), 'optim': optim.state_dict()},
             f"{config['checkpoint']}/{config['model']['name']}_epoch={epoch+1}.pt"
         )
     

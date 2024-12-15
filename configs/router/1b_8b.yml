@@ -2,8 +2,8 @@ wandb:
   run_name: "1b_8b_t=0"
 
 model:
-  name: "deberta-small"
-  dropout: 0.1
+  name: "microsoft/deberta-v3-small"
+  dropout: 0.2
   hidden_size: 384
 
 data:

@@ -48,13 +48,13 @@ class Router(nn.Module):
             nn.Linear(768, hidden_size),
             nn.Dropout(dropout),
             nn.Tanh(),
-            nn.Linear(hidden_size, 2)
+            nn.Linear(hidden_size, 1)
         )
 
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask, return_dict=True)
         cls = outputs.last_hidden_state[:, 0] # (B, 768)
-        logits = self.head(cls)
+        logits = self.head(cls).squeeze()
         return logits
     
     def step(self, batch):

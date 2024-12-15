@@ -1,0 +1,18 @@
+wandb:
+  run_name: "1b_8b_v1"
+
+model:
+  name: "deberta-small"
+  dropout: 0.25
+  hidden_size: 384
+
+data:
+  train: "outputs/1b_8b_wins.jsonl"
+
+training:
+  batch_size: 32
+  epochs: 5
+  lr: 1e-5
+  clip_grad_norm: 1.0
+
+checkpoint: "checkpoints"

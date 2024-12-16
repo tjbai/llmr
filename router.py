@@ -19,6 +19,34 @@ from nlpaug.flow import Sometimes
 import nltk
 nltk.download('averaged_perceptron_tagger_eng')
 
+class EMA:
+    def __init__(self, model, decay=0.999):
+        self.model = model
+        self.decay = decay
+        self.shadow = {}
+        self.backup = {}
+        
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                self.shadow[name] = param.data.clone()
+
+    def update(self):
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                new_average = self.decay * self.shadow[name] + (1.0 - self.decay) * param.data
+                self.shadow[name] = new_average.clone()
+
+    def apply_shadow(self):
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                self.backup[name] = param.data
+                param.data = self.shadow[name]
+    
+    def restore(self):
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                param.data = self.backup[name]
+
 class RouterDataset(Dataset):
     SEED = 42
 
@@ -150,6 +178,7 @@ def train(config):
     device = config['device']
     train_loader, val_loader = get_loaders(config)
     model = Router(dropout=config['model']['dropout'], hidden_size=config['model']['hidden_size']).to(device)
+    ema = EMA(model, decay=0.999)
     optim = AdamW(model.parameters(), lr=config['training']['lr'])
     
     print('sanity check loading...')
@@ -166,12 +195,16 @@ def train(config):
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config['training']['clip_grad_norm'])
             optim.step()
+            ema.update()
 
             wandb.log({'train/loss': loss})
         
+        ema.apply_shadow()
         val(model, val_loader, config)
+        ema.restore()
+
         torch.save({
-            'model': model.head.state_dict(), 'optim': optim.state_dict()},
+            'model': model.head.state_dict(), 'ema': ema.shadow, 'optim': optim.state_dict()},
             f"{config['checkpoint']}/{config['wandb']['run_name']}_epoch={epoch+1}.pt"
         )
     

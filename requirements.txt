@@ -9,3 +9,4 @@ wandb==0.19.1
 nltk==3.9.1
 nlpaug==1.1.11
 ema-pytorch==0.7.7
+seaborn==0.13.2

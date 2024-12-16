@@ -1,0 +1,10 @@
+model: meta-llama/Llama-3.3-70B-Instruct
+use_hf: true
+
+output: data/70b_validation.jsonl
+split: validation
+B: 1
+
+M: 1
+temperature: 0.7
+max_new_tokens: 512

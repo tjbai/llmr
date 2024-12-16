@@ -174,9 +174,10 @@ def train(config):
         val(ema, val_loader, config)
 
         torch.save({
-            'model': model.head.state_dict(), 'ema': ema.load_state_dict(), 'optim': optim.state_dict()},
-            f"{config['checkpoint']}/{config['wandb']['run_name']}_epoch={epoch+1}.pt"
-        )
+            'model': model.head.state_dict(),
+            'ema': {k: v for k, v in ema.state_dict().items() if k.startswith('ema_model.head')},
+            'optim': optim.state_dict()
+        }, f"{config['checkpoint']}/{config['wandb']['run_name']}_epoch={epoch+1}.pt")
     
     wandb.finish()
 

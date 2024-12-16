@@ -41,10 +41,10 @@ class RouterDataset(Dataset):
                 for _ in range(aug_factor):
                     aug = random.choice(self.augmenters)
                     new_prompt = aug.augment(item['prompt'])[0]
-                    aug_items.append({'prompt': new_prompt, 'target': item['target']})
+                    aug_items.append({'prompt': new_prompt, 'target': item.get('target')})
             self.items.extend(aug_items)
         
-        self.tokenized_items = [] 
+        self.tokenized_items = []
         for item in self.items:
             inputs = self.tokenizer(
                 item['prompt'],
@@ -56,7 +56,7 @@ class RouterDataset(Dataset):
             self.tokenized_items.append({
                 'input_ids': inputs['input_ids'].squeeze(),
                 'attention_mask': inputs['attention_mask'].squeeze(),
-                'target': item['target'],
+                'target': item.get('target'),
             })
 
     def __getitem__(self, idx):
@@ -178,18 +178,35 @@ def train(config):
         }, f"{config['checkpoint']}/{config['wandb']['run_name']}_epoch={epoch+1}.pt")
     
     wandb.finish()
+   
+@torch.no_grad() 
+def route(config):
+    device = config['device']
+    model = Router(dropout=config['model']['dropout'], hidden_size=config['model']['hidden_size']).to(device)
+    model.eval()
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config')
+    parser.add_argument('--train', action='store_true')
+    parser.add_argument('--route', action='store_true')
+    parser.add_argument('--from-checkpoint')
     return parser.parse_args()
 
 def main():
     args = parse_args()
     with open(args.config) as f: config = yaml.safe_load(f)
     config['device'] = 'cuda' if torch.cuda.is_available() else 'cpu'
-    wandb.init(project='llmr', name=config['wandb']['run_name'], config=config)
-    train(config)
+
+    if args.train:
+        wandb.init(project='llmr', name=config['wandb']['run_name'], config=config)
+        train(config)
+    
+    if args.route:
+        if args.from_checkpoint is None:
+            raise Exception('must include checkpoint')
+        config['from_checkpoint'] = args.from_checkpoint
+        route(config)
 
 if __name__ == '__main__':
     main()

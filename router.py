@@ -16,6 +16,9 @@ from transformers import DebertaV2Model, DebertaV2TokenizerFast
 from torch.utils.data import Dataset, DataLoader, random_split
 from nlpaug.flow import Sometimes
 
+import nltk
+nltk.download('averaged_perceptron_tagger_eng')
+
 class RouterDataset(Dataset):
     SEED = 42
 
@@ -28,11 +31,7 @@ class RouterDataset(Dataset):
         if torch.cuda.is_available(): torch.cuda.manual_seed(self.SEED) 
         
         self.tokenizer = DebertaV2TokenizerFast.from_pretrained('microsoft/deberta-v3-small')
-        self.augmenters = {
-            naw.SynonymAug(seed=self.SEED),
-            naw.ContextualWordEmbsAug(seed=self.SEED),
-            naw.BackTranslationAug(max_length=512, seed=self.SEED)
-        }
+        self.augmenters = [naw.SynonymAug(), naw.ContextualWordEmbsAug()]
     
         with open(input, 'r') as f:
             self.items = [json.loads(line) for line in f]
@@ -173,7 +172,7 @@ def train(config):
         val(model, val_loader, config)
         torch.save({
             'model': model.head.state_dict(), 'optim': optim.state_dict()},
-            f"{config['checkpoint']}/{config['model']['name'].split('/')[1]}_epoch={epoch+1}.pt"
+            f"{config['checkpoint']}/{config['wandb']['run_name']}_epoch={epoch+1}.pt"
         )
     
     wandb.finish()

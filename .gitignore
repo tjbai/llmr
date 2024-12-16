@@ -5,4 +5,6 @@ __pycache__
 test.ipynb
 .env
 wandb
-checkpoints
+
+checkpoints/*
+!checkpoints/*epoch=10.pt

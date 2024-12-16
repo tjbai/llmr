@@ -8,3 +8,4 @@ wandb
 
 checkpoints/*
 !checkpoints/*epoch=10.pt
+!checkpoints/*epoch=3.pt

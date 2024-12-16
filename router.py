@@ -23,8 +23,6 @@ class RouterDataset(Dataset):
     SEED = 42
 
     def __init__(self, input, augment=False, aug_factor=3):
-
-        # big preamble lol
         random.seed(self.SEED)
         np.random.seed(self.SEED)
         torch.manual_seed(self.SEED)

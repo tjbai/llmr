@@ -1,19 +1,20 @@
 wandb:
-  run_name: "1b_8b_base_t=0"
+  run_name: "8b_70b"
 
 model:
-  name: "microsoft/deberta-v2-xlarge"
-  dropout: 0.1
-  hidden_size: 768
+  name: "microsoft/deberta-v3-small"
+  dropout: 0.2
+  hidden_size: 384
 
 data:
   input: "outputs/1b_8b_wins.jsonl"
   val_size: 50
+  augment: false
 
 training:
   batch_size: 32
-  epochs: 100
-  lr: 0.01
+  epochs: 10
+  lr: 0.0003
   clip_grad_norm: 1.0
 
 checkpoint: "checkpoints"

@@ -9,7 +9,6 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import nlpaug.augmenter.word as naw
-import nlpaug.augmenter.sentence as nas
 
 from torch import nn
 from torch.optim import AdamW
@@ -18,9 +17,22 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from nlpaug.flow import Sometimes
 
 class RouterDataset(Dataset):
+    SEED = 42
+
     def __init__(self, input, augment=False, aug_factor=3):
+
+        # big preamble lol
+        random.seed(self.SEED)
+        np.random.seed(self.SEED)
+        torch.manual_seed(self.SEED)
+        if torch.cuda.is_available(): torch.cuda.manual_seed(self.SEED) 
+        
         self.tokenizer = DebertaV2TokenizerFast.from_pretrained('microsoft/deberta-v3-small')
-        self.augmenters = {naw.SynonymAug(), naw.ContextualWordEmbsAug(), naw.BackTranslationAug(max_length=512)}
+        self.augmenters = {
+            naw.SynonymAug(seed=self.SEED),
+            naw.ContextualWordEmbsAug(seed=self.SEED),
+            naw.BackTranslationAug(max_length=512, seed=self.SEED)
+        }
     
         with open(input, 'r') as f:
             self.items = [json.loads(line) for line in f]

@@ -1,0 +1,21 @@
+wandb:
+  run_name: "1b_70b_aug"
+
+model:
+  name: "microsoft/deberta-v3-small"
+  dropout: 0.2
+  hidden_size: 384
+
+data:
+  input: "outputs/1b_70b_quality_augmented.jsonl"
+  val_size: 100
+  augment: true
+  aug_factor: 3
+
+training:
+  batch_size: 32
+  epochs: 10
+  lr: 0.0003
+  clip_grad_norm: 1.0
+
+checkpoint: "checkpoints"

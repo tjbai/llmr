@@ -10,4 +10,4 @@
 
 ml anaconda
 conda activate llmr
-python3 router.py --config=configs/router_aug/1b_70b_aug.yml
+python3 router.py --config=configs/router_aug/1b_70b_aug.yml --train

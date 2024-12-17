@@ -7,7 +7,7 @@ model:
   hidden_size: 384
 
 data:
-  input: "outputs/8b_70b_quality_augmented.jsonl"
+  input: "data/8b_70b_quality_augmented.jsonl"
   val_size: 100
   augment: true
   aug_factor: 3

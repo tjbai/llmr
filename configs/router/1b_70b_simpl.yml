@@ -1,5 +1,5 @@
 wandb:
-  run_name: "1b_8b_aug=3"
+  run_name: "1b_70b_simpl"
 
 model:
   name: "microsoft/deberta-v3-small"
@@ -7,7 +7,7 @@ model:
   hidden_size: 384
 
 data:
-  input: "outputs/1b_8b_wins.jsonl"
+  input: "data/1b_70b_wins_simpl.jsonl"
   val_size: 100
   augment: true
   aug_factor: 3

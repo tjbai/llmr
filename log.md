@@ -42,6 +42,8 @@
 | 8B vs 70B | -1.1 (0.746) | 1.1 (0.759)   | -1.1 (0.768)  | 1.5 (0.776)   |
 | 1B vs 70B | -7.0 (0.642) | -12.2 (0.667) | -21.5 (0.682) | -25.6 (0.700) |
 
+**same as above with "standard" quality function**
+
 _Note: Performance gaps are shown as percentages, thresholds are raw values_
 
 # test set values
@@ -61,3 +63,5 @@ _Note: Performance gaps are shown as percentages, thresholds are raw values_
 | 1B vs 8B  | -5.1 (0.184) | -8.8 (0.306) | -15.0 (0.550) | -18.1 (0.774) |
 | 8B vs 70B | -0.7 (0.204) | 1.5 (0.390)  | 4.9 (0.542)   | 7.3 (0.756)   |
 | 1B vs 70B | -1.9 (0.218) | -9.4 (0.392) | -10.6 (0.514) | -10.7 (0.748) |
+
+**same as above with "standard" quality function**
